@@ -22,12 +22,12 @@ defmodule ElixirIRC.Commands do
 
   @doc "Instructs the server <remote server> (or the current server, if <remote server> is omitted) to connect to <target server> on port <port>."
   def connect(server, port, remote_server) do
-    "CONNECT " <> server <> " " <> port <> " " <> remote_server
+    "CONNECT " <> server <> " " <> port <> " " <> remote_server <> "\n"
   end 
 
   @doc "Instructs the server to shut down."
   def die() do
-    "DIE"
+    "DIE \n"
   end 
 
   #Didn't seem needed to implement this at the time
@@ -40,27 +40,31 @@ defmodule ElixirIRC.Commands do
 
   @doc "Requests the server to display the help file."
   def help() do
-    "HELP"
+    "HELP \n"
   end 
 
   @doc "Returns information about the <target> server, or the current server if <target> is omitted."
   def info(target) do
-    "INFO " <> target
+    "INFO " <> target <> "\n"
   end 
 
   @doc "Invites <nickname> to the channel <channel>."
   def invite(nickname, channel) do
-    "INVITE " <> nickname <> " " <> channel 
+    "INVITE " <> nickname <> " " <> channel <> "\n"
   end 
 
   @doc "Queries the server to see if the clients in the space-separated list <nicknames> are currently on the network."
   def ison(nickname) do
-    "ISON " <> nickname 
+    "ISON " <> nickname <> "\n"
   end 
 
   @doc "Makes the client join the channels in the comma-separated string <channels>, specifying the passwords, if needed, in the comma-separated string<keys>."
+  def join(channel) do
+    "JOIN " <> channel <> "\r\n"
+  end 
+
   def join(channels, keys) do
-    "JOIN " <> channels <> " " <> keys
+    "JOIN " <> channels <> " " <> keys <> "\r\n"
   end 
 
   @doc "Forcibly removes <client> from <channel>."
@@ -70,7 +74,7 @@ defmodule ElixirIRC.Commands do
 
   @doc "Forcibly removes <client> from the network."
   def kill(client, comment) do
-    "KILL " <> client <> " " comment
+    "KILL " <> client <> " " <> comment
   end 
 
   @doc "Sends a NOTICE to an invitation-only <channel> with an optional <message>, requesting an invite."
@@ -96,7 +100,7 @@ defmodule ElixirIRC.Commands do
 
   @doc "Returns the message of the day on <server> or the current server if it is omitted."
   def motd(server) do
-    "MOTD " <> server 
+    "MOTD " <> server <> "\n"
   end
 
   def names() do
@@ -107,11 +111,11 @@ defmodule ElixirIRC.Commands do
 
   @doc "Allows a client to change their IRC nickname."
   def nick(nickname) do
-    "NICK " <> nickname 
+    "NICK " <> nickname <> "\r\n"
   end 
 
   @doc "This command works similarly to PRIVMSG, except automatic replies must never be sent in reply to NOTICE messages."
-  def notice(msgtarget message) do
+  def notice(msgtarget, message) do
     "NOTICE " <> msgtarget <> " " <> message 
   end 
 
@@ -130,17 +134,17 @@ defmodule ElixirIRC.Commands do
 
   @doc "Tests the presence of a connection. A PING message results in a PONG reply. If <server2> is specified, the message gets passed on to it."
   def ping(server) do
-    "PING " <> server
+    "PING " <> server <> "\n"
   end 
 
   @doc "This command is a reply to the PING command and works in much the same way."
   def pong(server) do
-    "PONG " <> server 
+    "PONG " <> server <> "\n"
   end 
 
   @doc "Sends <message> to <msgtarget>, which is usually a user or channel."
   def privmsg(msgtarget, message) do
-    "PRIVMSG " <> msgtarget <> " " <> message 
+    "PRIVMSG " <> msgtarget <> " " <> message <> "\n"
   end 
 
   def quit() do
@@ -194,9 +198,15 @@ defmodule ElixirIRC.Commands do
   def uhnames() do
   end 
 
-  def user() do
+  @doc "This command is used at the beginning of a connection to specify the username, hostname, real name and initial user modes of the connecting client."
+  def user(user, realname) do
+    "USER " <> user <> " 0 * :" <> realname <> "\r\n" 
   end 
 
+  def user(user, realname, mode) do
+    "USER " <> user <> " " <> mode  <> " * :" <> realname <> "\r\n" 
+  end 
+  
   def userhost() do
   end 
 
