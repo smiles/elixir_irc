@@ -88,8 +88,10 @@ defmodule ElixirIRC do
   
   defp process_irc([head|tail], state) do
     irc_command(head)
-    |> irc_response(state)
-    process_irc(tail, state)  
+    |> pong_response(state)
+    |> plugin_list
+
+    process_irc(tail, state) 
   end 
 
   defp process_irc([], state) do
@@ -97,20 +99,18 @@ defmodule ElixirIRC do
   end 
 
   defp irc_command(line) do
-    String.split(line, " ")
+    line
     |> case do
-      [x, y] when x == "PING" -> {:ping, y}
-      [host, b, channel, msg] when b == "PRIVMSG" -> {:privmsg, host, channel, msg}    
-      _ -> {:no_command, line}
-    end 
+      x when String.contains?(x, "PING") -> {:pong, "PONG " <> List.last(String.split(x, " ")) <> "\r\n"}
+      x when String.contains?(x, "PRIVMSG") -> process_privmsg(x)
+      _ -> {:info, line}
+    end   
   end 
 
-  defp irc_response(data, state) do 
-    case data do 
-      {:ping, x} -> send_data("PONG " <> x <> "\r\n", state)
-      {:privmsg, _, _, _} -> plugin_list(data)  
-      _ -> :ok
-    end 
+  defp process_privmsg(irc) do
+    first = String.split(irc, " :")
+    second = String.split(List.first(first), " PRIVMSG ")
+    {:privmsg, List.last(second), List.last(first)}
   end 
 
   defp send_data(data, state) do
@@ -120,6 +120,14 @@ defmodule ElixirIRC do
       :gen_tcp.send(state.socket, data)
     end
   end  
+
+  defp pong_response(irc, state) do
+    if elem(irc, 0) == :pong do
+      send_message(elem(irc, 1), state)
+    end
+
+   irc 
+  end 
 
   defp plugin_list(data) do
     IO.inspect(data)
