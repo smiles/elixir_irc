@@ -1,4 +1,4 @@
-defmodule ElixirIRC do
+defmodule IRC do
   use GenServer
 
   def start_link(irc) do
@@ -55,15 +55,15 @@ defmodule ElixirIRC do
   end 
 
   def handle_cast(:init, state) do
-    send_data(ElixirIRC.Commands.user(state.user, state.user), state)
+    send_data(IRC.Commands.user(state.user, state.user), state)
     :timer.sleep(500)
-    send_data(ElixirIRC.Commands.nick(state.nick), state)
+    send_data(IRC.Commands.nick(state.nick), state)
 
     {:noreply, state}
   end  
 
   def handle_cast({:join, channel}, state) do
-    send_data(ElixirIRC.Commands.join(channel), state)
+    send_data(IRC.Commands.join(channel), state)
 
     {:noreply, state}
   end
@@ -77,7 +77,7 @@ defmodule ElixirIRC do
     {:noreply, state}
   end 
 
-  def handle_info({:ssl, {:sslsocket, {:gen_tcp, _socket, :tls_connection, :undefined}, ports}, data}, state) do
+  def handle_info({:ssl, {:sslsocket, {:gen_tcp, _socket, :tls_connection, :undefined}, _ports}, data}, state) do
     data
     |> to_string
     |> String.split("\r\n")
@@ -94,16 +94,19 @@ defmodule ElixirIRC do
     process_irc(tail, state) 
   end 
 
-  defp process_irc([], state) do
+  defp process_irc([], _state) do
     :ok 
   end 
 
   defp irc_command(line) do
-    line
-    |> case do
-      x when String.contains?(x, "PING") -> {:pong, "PONG " <> List.last(String.split(x, " ")) <> "\r\n"}
-      x when String.contains?(x, "PRIVMSG") -> process_privmsg(x)
-      _ -> {:info, line}
+    if String.contains?(line, "PING") do 
+      {:pong, "PONG " <> List.last(String.split(line, " ")) <> "\r\n"}
+    else 
+      if String.contains?(line, "PRIVMSG") do 
+        process_privmsg(line)
+      else 
+        {:info, line}
+      end 
     end   
   end 
 

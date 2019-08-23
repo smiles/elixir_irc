@@ -1,1 +1,4 @@
-# elixir_irc
+# ElixirIrc
+
+**TODO: Add description**
+

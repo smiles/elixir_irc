@@ -1,4 +1,4 @@
-defmodule ElixirIRC.Commands do
+defmodule IRC.Commands do
 
   @doc "Instructs the server to return information about the administrators of the server specified by <target>, where <target> is either a server or a user. If <target> is omitted, the server should return information about the administrators of the current server."
   def admin(target) do
