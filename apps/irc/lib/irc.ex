@@ -29,13 +29,23 @@ defmodule IRC do
     GenServer.cast(pid, {:join, channel})
   end 
 
-  def add_plug(pid, script) do
-    GenServer.cast(pid, {:add_plug, script})
+  def buffer(pid) do
+    GenServer.call(pid, :buffer)
   end 
 
   def generate_irc(ip, port, user, nick) do
-    %{ip: ip, port: port, user: user, nick: nick}
+    %{ip: ip, port: port, user: user, nick: nick, buffer: []}
   end
+
+  #GenServer call
+
+  def handle_call(:buffer, _from, state) do
+    buffer = state.buffer
+    new_state = Map.put(state, :buffer, [])
+    {:reply, buffer, new_state}
+  end 
+
+  #GenServer cast
 
   def handle_cast(:connect, state) do
     {:ok, socket} = :gen_tcp.connect(state.ip, state.port, [])
@@ -68,53 +78,56 @@ defmodule IRC do
     {:noreply, state}
   end
 
+  #GenServer handle_info
+
   def handle_info({:tcp, _socket, data}, state) do 
-    data
-    |> to_string
-    |> String.split("\r\n")
-    |> process_irc(state)
-    
-    {:noreply, state}
+    buffer_data = irc_data(data)
+    handle_ping(buffer_data, state)
+
+    {:noreply, Map.put(state, :buffer, state.buffer ++ buffer_data)}
   end 
 
   def handle_info({:ssl, {:sslsocket, {:gen_tcp, _socket, :tls_connection, :undefined}, _ports}, data}, state) do
+    buffer_data = irc_data(data)
+    handle_ping(buffer_data, state)
+
+    {:noreply, Map.put(state, :buffer, state.buffer ++ buffer_data)}
+  end 
+
+  #Private functions
+
+  defp irc_data(data) do
     data
-    |> to_string
+    |> String.Chars.to_string
     |> String.split("\r\n")
-    |> process_irc(state)
-    
-    {:noreply, state}
-  end 
-  
-  defp process_irc([head|tail], state) do
-    irc_command(head)
-    |> pong_response(state)
-    |> plugin_list
-
-    process_irc(tail, state) 
+    |> timestamp_data([])
   end 
 
-  defp process_irc([], _state) do
-    :ok 
+  defp timestamp_data([head|tail], result) do
+    if head != "" do
+      timestamp_data(tail, result ++ [{head, DateTime.utc_now}])
+        else 
+      timestamp_data(tail, result)
+    end 
   end 
 
-  defp irc_command(line) do
-    if String.contains?(line, "PING") do 
-      {:pong, "PONG " <> List.last(String.split(line, " ")) <> "\r\n"}
-    else 
-      if String.contains?(line, "PRIVMSG") do 
-        process_privmsg(line)
-      else 
-        {:info, line}
-      end 
-    end   
+  defp timestamp_data([], result) do
+      result
   end 
 
-  defp process_privmsg(irc) do
-    first = String.split(irc, " :")
-    second = String.split(List.first(first), " PRIVMSG ")
-    {:privmsg, List.last(second), List.last(first)}
+  defp handle_ping([head|tail], state) do 
+    irc = elem(head, 0)
+
+    if String.contains?(irc, "PING") do
+      send_data("PONG :" <> String.trim(irc, "PING :") <> "\r\n", state)
+    end  
+
+    handle_ping(tail, state)
   end 
+
+  defp handle_ping([], state) do
+  end 
+
 
   defp send_data(data, state) do
     if state.ssl do
@@ -123,16 +136,4 @@ defmodule IRC do
       :gen_tcp.send(state.socket, data)
     end
   end  
-
-  defp pong_response(irc, state) do
-    if elem(irc, 0) == :pong do
-      send_message(elem(irc, 1), state)
-    end
-
-   irc 
-  end 
-
-  defp plugin_list(data) do
-    IO.inspect(data)
-  end 
 end
